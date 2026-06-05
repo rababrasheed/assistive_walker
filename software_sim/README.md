@@ -56,6 +56,17 @@ Units communicate via a templated fixed-capacity circular FIFO queue (CANBus<T>)
 
 ---
 
+## Build Configuration
+The codebase supports both PC simulation and STM32 hardware builds from the 
+same source files using a compile-time flag:
+
+- `STM32_BUILD` defined → compiles HAL hardware code (SensorUnit reads real 
+  ECHO pin, ActuatorUnit drives real GPIO/PWM)
+- `STM32_BUILD` not defined → compiles simulation code (SensorUnit generates 
+  random walk distance, ActuatorUnit prints to stdout)
+
+---
+
 ## Testing
 The simulation runs 5 boundary tests before the main loop:
 - CLEAR state (100cm)
@@ -67,17 +78,10 @@ The simulation runs 5 boundary tests before the main loop:
 
 ---
 
-## Planned Hardware Integration
-- Replace simulate_reading() with STM32 HAL TIM2 input capture for real 
-  HC-SR04 Echo pulse measurement
-- Replace printf alerts with HAL PWM (TIM3/PC6) for buzzer 
-  and GPIO (PA10) for vibration motor
-- Timer interrupt driven tick at 14 Hz replacing polling loop
-- FreeRTOS task separation for sensor, control, and actuator units
-- Hardware watchdog timer for fault tolerance
-
-## Planned Feature Expansion
-- Multi-directional obstacle detection (3x HC-SR04: left, center, right)
-- Directional haptic feedback (two vibration motors, one per handle)
-- Navigation guidance: direct user away from obstacle based on which 
-  sensor triggers
+## Planned Next Steps
+- **Hardware watchdog timer** — fault tolerance, auto-reset if main loop stalls
+- **FreeRTOS migration** — replace bare metal superloop with dedicated tasks 
+  for SensorUnit, ControlUnit, and ActuatorUnit running at proper priorities
+- **Multi-directional detection** — 3x HC-SR04 (left, center, right)
+- **Directional haptic feedback** — two vibration motors, one per handle, 
+  guide user away from obstacle based on which sensor triggers
