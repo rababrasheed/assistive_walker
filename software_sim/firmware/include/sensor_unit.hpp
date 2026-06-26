@@ -4,8 +4,8 @@
 
 class SensorUnit {
 public: 
-    //constructor: connects to shared CAN bus
-    SensorUnit(CANBus<SensorMessage>& bus);
+    //constructor: connects to shared CAN bus and its own direction (part2)
+    SensorUnit(CANBus<SensorMessage>& bus, Direction direction);
 
     //called once every 70 ms at approx 14 HZ
     //core of the sensor_unit  
@@ -21,11 +21,13 @@ public:
     uint32_t message_count() const;
 
 private:
-    float simulate_reading() const; //test person walking 
+    float simulate_reading(); //test person walking 
     CANBus<SensorMessage>& bus;
+    Direction direction; //part2
     float last_distance_cm; 
     uint32_t msg_count;
 
     bool override_active;
     float override_distance;
+    float current_sim_distance; //part 2 - each sensor has its own position 
 };

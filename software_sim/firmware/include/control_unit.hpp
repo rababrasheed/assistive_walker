@@ -24,7 +24,11 @@ private:
     CANBus<ControlMessage>& control_bus;
     SystemState last_state_val;
     uint32_t msg_count;
+    //part2 
+    float distances[4]; //stores latest reading from each direction, indexed by Direction enum
+    bool  fresh[4];   //true if we got a new reading this cycle for that direction
     //helper functions
     SystemState classify(float distance_cm) const;
     AlertCommand command_for(SystemState state) const;
+    AlertCommand find_clear_direction() const; //part2 - finds best alternate path
 };
