@@ -4,4 +4,8 @@ Debug/
 *.map
 *.list
 *.d
-*.o
+*.o.DS_Store
+*.DS_Store
+**/.DS_Store
+walker_sim
+output.txt
