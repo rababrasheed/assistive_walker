@@ -6,6 +6,8 @@ ActuatorUnit::ActuatorUnit(CANBus<ControlMessage>& control_bus_ref) : control_bu
 {
     total_alerts_count=0;
     total_logs_count=0;
+    obstacle_active=false;     //part2
+    obstacle_start_time=0;     //part2
 }
 
 void ActuatorUnit::tick()
@@ -23,7 +25,7 @@ void ActuatorUnit::tick()
     }
 }
 
-void ActuatorUnit::execute_alert(const ControlMessage& msg)
+/*void ActuatorUnit::execute_alert(const ControlMessage& msg)
 {
     switch (msg.command) 
     {
@@ -39,6 +41,69 @@ void ActuatorUnit::execute_alert(const ControlMessage& msg)
             break;
         default:
             break;
+    }
+}
+*/
+void ActuatorUnit::execute_alert(const ControlMessage& msg)
+{
+    //front is clear, reset phase tracking, stay silent
+    if(msg.command == CMD_NO_ALERT)
+    {
+        obstacle_active=false;
+        return; //no action needed bc in CLEAR state
+    }
+
+    //we're in warning or danger. mark when this obstacle episode started
+    if(!obstacle_active)
+    {
+        obstacle_active=true;
+        obstacle_start_time=msg.timestamp;
+    }
+
+    //wrap elapsed time into the cycle so it loops 0..4000 
+    uint32_t elapsed = (msg.timestamp - obstacle_start_time) % CYCLE_DURATION_MS;
+
+    //phase 1: 0-2000ms — urgency tone, motor on
+    if(elapsed < PHASE1_DURATION_MS)
+    {
+        switch (msg.command)
+        {
+            case CMD_SLOW_BEEP:
+                printf("SLOW BEEP - OBJ APPROACHING (motor ON)\n");
+                total_alerts_count++;
+                break;
+            case CMD_RAPID_BEEP:
+                printf("RAPID BEEP - GONNA HIT OBJ (motor ON)\n");
+                total_alerts_count++;
+                break;
+            default:
+                break;
+        }
+    }
+    //phase 2: 2000-4000ms — directional pattern, motor off
+    else
+    {
+        switch (msg.dir_command)
+        {
+            case CMD_DIR_RIGHT:
+                printf("BEEP (1x) - GO RIGHT (motor OFF)\n");
+                total_alerts_count++;
+                break;
+            case CMD_DIR_LEFT:
+                printf("BEEP BEEP (2x) - GO LEFT (motor OFF)\n");
+                total_alerts_count++;
+                break;
+            case CMD_DIR_BACK:
+                printf("BEEP BEEP BEEP (3x) - GO BACK (motor OFF)\n");
+                total_alerts_count++;
+                break;
+            case CMD_ALL_BLOCKED:
+                printf("CONTINUOUS TONE - ALL BLOCKED, STOP (motor OFF)\n");
+                total_alerts_count++;
+                break;
+            default:
+                break;
+        }
     }
 }
 
