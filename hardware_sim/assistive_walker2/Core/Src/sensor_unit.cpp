@@ -83,6 +83,9 @@ float SensorUnit::read_distance_cm() const
 	    extern volatile uint32_t echo_rise_time;
 	    extern volatile uint32_t echo_fall_time;
 	    extern volatile bool echo_ready;
+	    extern TIM_HandleTypeDef htim2;
+
+	    echo_ready = false;  // clear flag for next reading
 
 	    // fire the trigger pulse
 	    HAL_GPIO_WritePin(trig_port, trig_pin, GPIO_PIN_RESET);
@@ -91,6 +94,7 @@ float SensorUnit::read_distance_cm() const
 	    for(volatile int i = 0; i < 1800; i++);  // 10us delay
 	    HAL_GPIO_WritePin(trig_port, trig_pin, GPIO_PIN_RESET);
 
+	    /*
 	    // wait for ISR to complete the reading (with timeout)
 	    uint32_t timeout = HAL_GetTick();
 	    while(!echo_ready)
@@ -101,10 +105,21 @@ float SensorUnit::read_distance_cm() const
 	        }
 
 	    }
+	    */
+	    uint32_t start_count = __HAL_TIM_GET_COUNTER(&htim2);
+	       while(!echo_ready)
+	       {
+	           // timeout measured off TIM2's own hardware counter -- no HAL_GetTick() involved
+	           if((__HAL_TIM_GET_COUNTER(&htim2) - start_count) > 30000)  // 30000 us = 30ms
+	           {
+	               return 999.0f;
+	           }
+	       }
+
 	    // reading is ready so calculate distance from ISR timestamps
-	    echo_ready = false;  // clear flag for next reading
-	    uint32_t elapsed_ms = echo_fall_time - echo_rise_time; //how long echo pulse was
-	    return (float)(elapsed_ms * 17); //17 bc sound travels 17cm/ms for a roundtrip
+	    uint32_t elapsed_us = echo_fall_time - echo_rise_time; //how long echo pulse was
+	    //return (float)(elapsed_ms * 17); //17 bc sound travels 17cm/ms for a roundtrip
+	    return (float)elapsed_us / 58.0f;  // standard HC-SR04 formula: cm = us / 58
 }
 #else
 float SensorUnit::read_distance_cm() const //sim version
@@ -127,3 +142,24 @@ float SensorUnit::read_distance_cm() const //sim version
     return current;
 }
 #endif
+
+extern "C" void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    extern volatile uint32_t echo_rise_time;
+    extern volatile uint32_t echo_fall_time;
+    extern volatile bool echo_ready;
+
+    if(htim->Instance == TIM2 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+    {
+        uint32_t captured = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+        if(HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin) == GPIO_PIN_SET)
+        {
+            echo_rise_time = captured;  // this capture happened on the rising edge
+        }
+        else
+        {
+            echo_fall_time = captured;  // this capture happened on the falling edge
+            echo_ready = true;
+        }
+    }
+}

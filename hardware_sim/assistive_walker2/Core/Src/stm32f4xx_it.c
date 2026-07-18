@@ -56,6 +56,7 @@ extern volatile uint32_t echo_rise_time; //needs to be declared here bc EXTI0_IR
 extern volatile uint32_t echo_fall_time;
 extern volatile bool echo_ready;
 extern UART_HandleTypeDef huart2;
+extern TIM_HandleTypeDef htim2;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -186,6 +187,7 @@ void TIM6_DAC_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+/*
 void EXTI0_IRQHandler(void)
 {
     // check if ECHO pin is HIGH (rising edge) or LOW (falling edge)
@@ -204,5 +206,10 @@ void EXTI0_IRQHandler(void)
 
     // MUST clear the interrupt flag or it fires forever
     __HAL_GPIO_EXTI_CLEAR_IT(ECHO_Pin);
+}
+*/
+void TIM2_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim2);
 }
 /* USER CODE END 1 */

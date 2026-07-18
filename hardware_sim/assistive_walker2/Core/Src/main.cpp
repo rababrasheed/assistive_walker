@@ -53,6 +53,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim2;
 // shared between EXTI0 ISR and SensorUnit
 volatile uint32_t echo_rise_time = 0;   // timestamp when ECHO went HIGH
 volatile uint32_t echo_fall_time = 0;   // timestamp when ECHO went LOW
@@ -384,7 +385,27 @@ static void MX_TIM2_Init(void)
   /* USER CODE END TIM2_Init 1 */
 
   /* USER CODE BEGIN TIM2_Init 2 */
+	 __HAL_RCC_TIM2_CLK_ENABLE();
 
+	  TIM_IC_InitTypeDef sConfigIC = {0};
+
+	  htim2.Instance = TIM2;
+	  htim2.Init.Prescaler = 89;              // 90MHz timer clock / 90 = 1MHz -> 1 tick = 1 microsecond
+	  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+	  htim2.Init.Period = 0xFFFFFFFF;         // TIM2 is 32-bit on this chip, use full range
+	  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	  HAL_TIM_IC_Init(&htim2);
+
+	  sConfigIC.ICPolarity  = TIM_ICPOLARITY_BOTHEDGE;  // capture on rise AND fall
+	  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+	  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+	  sConfigIC.ICFilter    = 0;
+	  HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_1);
+
+	  HAL_NVIC_SetPriority(TIM2_IRQn, 5, 0);
+	  HAL_NVIC_EnableIRQ(TIM2_IRQn);
+
+	  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
   /* USER CODE END TIM2_Init 2 */
 
 }
@@ -530,13 +551,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(ECHO_GPIO_Port, &GPIO_InitStruct);
   */
   GPIO_InitStruct.Pin = ECHO_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;  // trigger on both edges
+  //GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;  // trigger on both edges
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;      // alternate function, not plain interrupt input
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;   // PA0 -> TIM2 channel 1
   HAL_GPIO_Init(ECHO_GPIO_Port, &GPIO_InitStruct);
 
   // tell the NVIC (interrupt controller) to enable this interrupt
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);  // PA0 = EXTI line 0
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+ // HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);  // PA0 = EXTI line 0
+  //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
